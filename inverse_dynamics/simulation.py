@@ -74,6 +74,9 @@ class Simulation(object):
         traj_tau_feedback = np.zeros(
             ((self._num_iteration,) + system_act.q.shape),
             dtype=system_act.q.dtype)
+        traj_tau_feedback_low_gain = np.zeros(
+            ((self._num_iteration,) + system_act.q.shape),
+            dtype=system_act.q.dtype)
         traj_tau_feedforward = np.zeros(
             ((self._num_iteration,) + system_act.q.shape),
             dtype=system_act.q.dtype)
@@ -92,6 +95,7 @@ class Simulation(object):
             qdd_desired = system_act.policy_evaluation(q_sensing,
                                                        qd_sensing)
 
+            # compute rbd model torque (without friction)
             tau_inverse_desired = system_act.dynamics_inverse(
                 q_sensing, qd_sensing, qdd_desired)
             tau_inverse_desired = self._bound(tau_inverse_desired)
@@ -99,12 +103,14 @@ class Simulation(object):
             tau = np.zeros_like(tau_inverse_desired)
             tau += tau_inverse_desired
 
+            # compute (low_gain) controller feedback torque
             tau_feedback = np.zeros_like(tau)
             if feedback is not None:
                 tau_feedback = self._bound(feedback.predict(
                     q_sensing, qd_sensing, qdd_desired))
             tau += tau_feedback
 
+            # compute learned model torque
             tau_feedforward = np.zeros_like(tau)
             if feedforward is not None:
                 tau_feedforward = self._bound(feedforward.predict(
@@ -119,10 +125,13 @@ class Simulation(object):
             traj_qdd_desired[pos] = qdd_desired
 
             traj_tau[pos] = tau
+
+            # init to zero, and store high-gain controller feedback torque, if available
             traj_tau_feedback[pos] = tau_feedback
             if feedback is not None:
                 traj_tau_feedback[pos] = self._bound(feedback.tau)
 
+            traj_tau_feedback_low_gain[pos] = tau_feedback
             traj_tau_inverse_desired[pos] = tau_inverse_desired
             traj_tau_feedforward[pos] = tau_feedforward
 
@@ -161,6 +170,7 @@ class Simulation(object):
         result[defines.TRAJ_TAU_INVERSE_ACTUAL] = traj_tau_inverse_actual
         result[defines.TRAJ_TAU_INVERSE_DESIRED] = traj_tau_inverse_desired
         result[defines.TRAJ_TAU_FEEDBACK] = traj_tau_feedback
+        result[defines.TRAJ_TAU_FEEDBACK_LOW_GAIN] = traj_tau_feedback_low_gain
         result[defines.TRAJ_TAU_FEEDFORWARD] = traj_tau_feedforward
 
         return result

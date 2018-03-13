@@ -131,9 +131,48 @@ class NoiseForwardBasicStictionEverywhere(Interface):
                     qdd[1] = 0
         return qdd
 
+class NoiseForwardClassicStictionCuloumbViscuous(Interface):
+
+    @classmethod
+    def create_from_params(cls, params):
+        return cls(params.nfor_noise_max,
+                   params.nfor_friction,
+                   params.nfor_stiction,
+                   params.nfor_coulomb)
+
+    def __init__(self, noise_max, friction, stiction, coloumb):
+        super(NoiseForwardClassicStictionCuloumbViscuous, self).__init__()
+        self._noise_max = noise_max
+        self._friction = friction
+        self._stiction = stiction
+        self._coloumb = coloumb
+
+    def __call__(self, q, qd, qdd, tau, dynamics_forward_fn):
+        if self._friction > 0:
+            # velocity dependend vicsuous and coloumb friction
+            qdd = dynamics_forward_fn(q, qd, tau - self._friction * qd - self._coloumb * np.sign(qd))
+
+        if self._noise_max > 0:
+            noise = np.random.randn(qdd.size) * self._noise_max
+            noise[noise > self._noise_max] = self._noise_max
+            noise[noise < -self._noise_max] = -self._noise_max
+            qdd += noise
+
+        in_stiction = np.zeros_like(q, dtype=bool)
+        if self._stiction > 0:
+            # we need a lot of torque to get moving
+            below_vel_threshold = np.abs(qd) < 0.01
+            # for the torque threshold the total torque on the motor (tau - tau_visco)
+            below_torque_threshold = np.abs(dynamics_forward_fn(q, qd, tau)) < self._stiction
+            qdd[np.logical_and(below_vel_threshold, below_torque_threshold)] = 0.0
+            in_stiction[np.logical_and(below_vel_threshold, below_torque_threshold)] = True
+
+        return qdd, in_stiction
+
 
 factory.register(NoiseForwardBasic, sys.modules[__name__])
 factory.register(NoiseForwardBasicStictionEverywhere, sys.modules[__name__])
+factory.register(NoiseForwardClassicStictionCuloumbViscuous, sys.modules[__name__])
 
 
 def create_from_params(params):

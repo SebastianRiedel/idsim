@@ -133,8 +133,77 @@ class SystemPd(Interface):
     def dynamics_inverse(self, q, qd, qdd):
         return np.dot(self._mass, qdd)
 
+class SystemPdViscoJoint(Interface):
+    '''
+    Constraints elastic joint:
+    state space: [ q, qd ]
+    motor inertia: B
+    stiffness: K
+    damping: D
+    applied motor torque: tau_m
+
+    tau_visco = K * q + D * qd
+    B * qdd = tau - tau_visco
+    '''
+
+    @classmethod
+    def create_from_params(cls,
+                           params,
+                           noise_sensing=None,
+                           noise_forward=None):
+        return cls(params.sys_dt,
+                   params.sys_q_start,
+                   params.sys_qd_start,
+                   params.sys_p_gain,
+                   params.sys_d_gain,
+                   params.sys_q_target,
+                   params.sys_qd_target,
+                   params.sys_K,
+                   params.sys_D,
+                   params.sys_B,
+                   noise_sensing,
+                   noise_forward)
+
+    def __init__(self, dt, q_start, qd_start, p_gain, d_gain,
+                 q_target, qd_target, K, D, B,
+                 noise_sensing=None,
+                 noise_forward=None):
+        super(SystemPdViscoJoint, self).__init__(dt,
+                                       q_start,
+                                       qd_start,
+                                       noise_sensing,
+                                       noise_forward)
+        self._p_gain = np.array(p_gain)
+        self._d_gain = np.array(d_gain)
+        self._q_target = np.array(q_target)
+        self._qd_target = np.array(qd_target)
+        self._K = np.diag(K)
+        self._B = np.diag(B)
+        self._D = np.diag(D)
+
+    def policy_evaluation(self, q, qd):
+        return (self._p_gain * (self._q_target - q) +
+                self._d_gain * (self._qd_target - qd))
+
+    def _dynamics_forward(self, q, qd, tau):
+        return tau - np.dot(self._K, q) - np.dot(self._D, qd)
+
+    def dynamics_forward(self, q, qd, tau):
+        qdd = self._dynamics_forward(q, qd, tau)
+        if self._noise_forward is not None:
+            return self._noise_forward(q, qd, qdd, tau, self._dynamics_forward)
+        return qdd
+
+    def dynamics_inverse(self, q, qd, qdd):
+        return np.dot(self._B, qdd) + np.dot(self._K, q) + np.dot(self._D, qd)
+
+    def set_target(self, q_target, qd_target):
+        self._q_target = np.array(q_target)
+        self._qd_target = np.array(qd_target)
+
 
 factory.register(SystemPd, sys.modules[__name__])
+factory.register(SystemPdViscoJoint, sys.modules[__name__])
 
 
 def create_from_params(params, *args, **kwargs):

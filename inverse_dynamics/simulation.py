@@ -138,7 +138,15 @@ class Simulation(object):
             # Now we compute the system update and we are essentially getting
             # results for pos + 1.
             qdd = system_ref.dynamics_forward(q, qd, tau)
-            q, qd = system_act.integrate(q, qd, qdd)
+            if isinstance(qdd, tuple):
+                qdd_value = qdd[0]
+                in_stiction = qdd[1]
+                # not only set qdd, but also set velocity to zero if in stiction
+                qd_instiction = np.copy(qd)
+                qd_instiction[in_stiction] = 0.0
+                q, qd = system_act.integrate(q, qd_instiction, qdd_value)
+            else:
+                q, qd = system_act.integrate(q, qd, qdd)
 
             system_act.update_state(q, qd)
             # The actual acceleration is the outcome of the previous actual

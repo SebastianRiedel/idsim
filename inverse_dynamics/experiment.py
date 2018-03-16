@@ -2,6 +2,8 @@
 import os
 import argparse
 import copy
+from builtins import range
+
 
 import numpy as np
 
@@ -168,7 +170,7 @@ def run_actual_feedback_learn(exp_type, params, result, learn_name, data_fn):
     fdf = feedforward.create_from_params(params_exp.feedforward,
                                          io_trans)
 
-    for iteration in xrange(params_exp.learn_iterations):
+    for iteration in range(params_exp.learn_iterations):
         # We seed the iteration
         np.random.seed(params_exp.random_seed + iteration * 100)
         print('random seed ', params_exp.random_seed + iteration * 100)

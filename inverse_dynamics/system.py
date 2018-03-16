@@ -1,6 +1,6 @@
-
 import sys
 import numpy as np
+from builtins import range
 
 from inverse_dynamics import factory
 
@@ -55,7 +55,7 @@ class Interface(object):
         traj_q = np.zeros(((num_iteration,) + q.shape), dtype=q.dtype)
         traj_qd = np.zeros(((num_iteration,) + q.shape), dtype=q.dtype)
         traj_qdd = np.zeros(((num_iteration,) + q.shape), dtype=q.dtype)
-        for pos in xrange(num_iteration):
+        for pos in range(num_iteration):
             qdd = self.policy_evaluation(q, qd)
             traj_q[pos] = q
             traj_qd[pos] = qd

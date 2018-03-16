@@ -2,6 +2,7 @@
 import os
 import sys
 import numpy as np
+from builtins import range
 
 import easydict
 import tensorflow as tf
@@ -143,7 +144,7 @@ class FeedforwardNetworkInterface(Interface):
         count = 1. / fraction
         indices = []
         count_cur = 1 * count
-        for pos in xrange(size):
+        for pos in range(size):
             if pos > count_cur:
                 indices.append(pos)
                 count_cur += count
@@ -237,9 +238,9 @@ class FeedforwardNetworkInterface(Interface):
 
         epoch = 10 * train.traj_q.shape[0] / self._batch_size
 
-        for step in xrange(
-                self._num_epochs * (
-                    train.traj_q.shape[0] / self._batch_size)):
+        for step in range(
+                int(self._num_epochs * (
+                    train.traj_q.shape[0] / self._batch_size))):
             inputs = {}
             inputs['loss_np'] = self._train_op
             if step % self._log_every_n_steps == 0:
@@ -298,7 +299,8 @@ class FeedforwardNetworkInterface(Interface):
             validation_dataset.traj_tau,
             force_update=True)
         steps = (validation_dataset.traj_q.shape[0] / self._batch_size) + 1
-        for step in xrange(steps):
+        print(steps)
+        for step in range(int(steps)):
             total_loss += self._sess.run(self._loss_op, feed_dict=feed_dict)
             feed_dict = self._feed_dict(
                 validation_dataset.traj_s,
@@ -405,7 +407,7 @@ class FeedforwardNetworkBasic(FeedforwardNetworkInterface):
 
         result = []
         with tf.device(self._device):
-            for pos in xrange(q.size):
+            for pos in range(q.size):
                 with tf.variable_scope('inference_op_' + str(pos),
                                        values=inputs):
                     net = tf.concat(
@@ -422,7 +424,7 @@ class FeedforwardNetworkBasic(FeedforwardNetworkInterface):
         self._tau_placeholder = tf.placeholder(shape=(None, tau.size),
                                                dtype=tf.float32)
         result = []
-        for pos in xrange(tau.size):
+        for pos in range(tau.size):
             with tf.variable_scope('loss_op_' + str(pos),
                                    values=(inference_op +
                                            [self._tau_placeholder])):

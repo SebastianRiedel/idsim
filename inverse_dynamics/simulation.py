@@ -1,5 +1,6 @@
 
 import numpy as np
+from builtins import range
 
 from inverse_dynamics import defines
 
@@ -86,7 +87,7 @@ class Simulation(object):
                 *system_act.desired_trajectory(
                     system_act.q, system_act.qd, self._num_iteration))
 
-        for pos in xrange(self._num_iteration):
+        for pos in range(self._num_iteration):
             q_sensing = system_act.q_sensing
             qd_sensing = system_act.qd_sensing
             q = system_act.q
